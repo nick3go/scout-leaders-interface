@@ -26,6 +26,69 @@ function parseId(idParam: string) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+async function avtorizirajSrecanje(id: number, pin: string) {
+  const { data: srecanje, error } = await getSrecanje(id);
+
+  if (error || !srecanje) {
+    return {
+      response: NextResponse.json(
+        { error: "Srečanje ne obstaja." },
+        { status: 404 }
+      ),
+      srecanje: null,
+    };
+  }
+
+  const pinPravilen = await preveriVodnikPin(
+    srecanje.vodnik_id,
+    pin
+  );
+
+  if (!pinPravilen) {
+    return {
+      response: NextResponse.json(
+        { error: "Napačen PIN." },
+        { status: 403 }
+      ),
+      srecanje: null,
+    };
+  }
+
+  return { response: null, srecanje };
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const { id: idParam } = await context.params;
+  const id = parseId(idParam);
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Neveljaven ID srečanja." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const { pin } = await request.json();
+
+    const { response } = await avtorizirajSrecanje(
+      id,
+      String(pin ?? "")
+    );
+
+    if (response) {
+      return response;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Neveljavna zahteva." },
+      { status: 400 }
+    );
+  }
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   const { id: idParam } = await context.params;
   const id = parseId(idParam);
@@ -41,26 +104,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = await request.json();
     const { pin, datum, vrsta, tema, prisotni, opis, opombe } = body;
 
-    const { data: srecanje, error: srecanjeError } =
-      await getSrecanje(id);
-
-    if (srecanjeError || !srecanje) {
-      return NextResponse.json(
-        { error: "Srečanje ne obstaja." },
-        { status: 404 }
-      );
-    }
-
-    const pinPravilen = await preveriVodnikPin(
-      srecanje.vodnik_id,
+    const { response } = await avtorizirajSrecanje(
+      id,
       String(pin ?? "")
     );
 
-    if (!pinPravilen) {
-      return NextResponse.json(
-        { error: "Napačen PIN." },
-        { status: 403 }
-      );
+    if (response) {
+      return response;
     }
 
     if (
@@ -139,26 +189,13 @@ export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { pin } = await request.json();
 
-    const { data: srecanje, error: srecanjeError } =
-      await getSrecanje(id);
-
-    if (srecanjeError || !srecanje) {
-      return NextResponse.json(
-        { error: "Srečanje ne obstaja." },
-        { status: 404 }
-      );
-    }
-
-    const pinPravilen = await preveriVodnikPin(
-      srecanje.vodnik_id,
+    const { response } = await avtorizirajSrecanje(
+      id,
       String(pin ?? "")
     );
 
-    if (!pinPravilen) {
-      return NextResponse.json(
-        { error: "Napačen PIN." },
-        { status: 403 }
-      );
+    if (response) {
+      return response;
     }
 
     const { error } = await supabaseAdmin
