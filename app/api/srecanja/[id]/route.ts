@@ -13,11 +13,24 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+async function getSrecanje(id: number) {
+  return supabaseAdmin
+    .from("srecanje")
+    .select("id, vodnik_id")
+    .eq("id", id)
+    .single();
+}
+
+function parseId(idParam: string) {
+  const id = Number(idParam);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   const { id: idParam } = await context.params;
-  const id = Number(idParam);
+  const id = parseId(idParam);
 
-  if (!Number.isInteger(id) || id < 1) {
+  if (!id) {
     return NextResponse.json(
       { error: "Neveljaven ID srečanja." },
       { status: 400 }
@@ -29,11 +42,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { pin, datum, vrsta, tema, prisotni, opis, opombe } = body;
 
     const { data: srecanje, error: srecanjeError } =
-      await supabaseAdmin
-        .from("srecanje")
-        .select("id, vodnik_id")
-        .eq("id", id)
-        .single();
+      await getSrecanje(id);
 
     if (srecanjeError || !srecanje) {
       return NextResponse.json(
@@ -76,7 +85,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const steviloPrisotnih = Number(prisotni);
 
-    if (!Number.isInteger(steviloPrisotnih) || steviloPrisotnih < 0) {
+    if (
+      !Number.isInteger(steviloPrisotnih) ||
+      steviloPrisotnih < 0
+    ) {
       return NextResponse.json(
         { error: "Neveljavno število prisotnih." },
         { status: 400 }
@@ -97,8 +109,68 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (error) {
       console.error(error);
+
       return NextResponse.json(
         { error: "Napaka pri shranjevanju sprememb." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Neveljavna zahteva." },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const { id: idParam } = await context.params;
+  const id = parseId(idParam);
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Neveljaven ID srečanja." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const { pin } = await request.json();
+
+    const { data: srecanje, error: srecanjeError } =
+      await getSrecanje(id);
+
+    if (srecanjeError || !srecanje) {
+      return NextResponse.json(
+        { error: "Srečanje ne obstaja." },
+        { status: 404 }
+      );
+    }
+
+    const pinPravilen = await preveriVodnikPin(
+      srecanje.vodnik_id,
+      String(pin ?? "")
+    );
+
+    if (!pinPravilen) {
+      return NextResponse.json(
+        { error: "Napačen PIN." },
+        { status: 403 }
+      );
+    }
+
+    const { error } = await supabaseAdmin
+      .from("srecanje")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+
+      return NextResponse.json(
+        { error: "Napaka pri brisanju srečanja." },
         { status: 500 }
       );
     }
