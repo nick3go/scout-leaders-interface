@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Srecanje = {
@@ -37,6 +37,7 @@ function formatDatum(datum: string) {
 
 export default function SrecanjePage() {
   const params = useParams();
+  const router = useRouter();
   const id = Number(Array.isArray(params.id) ? params.id[0] : params.id);
 
   const [srecanje, setSrecanje] = useState<Srecanje | null>(null);
@@ -56,7 +57,9 @@ export default function SrecanjePage() {
   const [pin, setPin] = useState("");
 
   const [sporocilo, setSporocilo] = useState("");
+  const [preverjamPin, setPreverjamPin] = useState(false);
   const [shranjujem, setShranjujem] = useState(false);
+  const [brisem, setBrisem] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!Number.isInteger(id) || id < 1) {
@@ -122,14 +125,39 @@ export default function SrecanjePage() {
     loadData();
   }, [loadData]);
 
-  async function shraniSpremembe(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function preveriPinInOdpriUrejanje() {
     setSporocilo("");
 
     if (!pin.trim()) {
       setSporocilo("Za urejanje vnesi PIN vodnika.");
       return;
     }
+
+    setPreverjamPin(true);
+
+    const response = await fetch(`/api/srecanja/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    const result = await response.json();
+    setPreverjamPin(false);
+
+    if (!response.ok) {
+      setSporocilo(result.error ?? "PIN ni pravilen.");
+      return;
+    }
+
+    setSporocilo("");
+    setUrejanje(true);
+  }
+
+  async function shraniSpremembe(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSporocilo("");
 
     const steviloPrisotnih = Number(prisotni);
 
@@ -169,10 +197,43 @@ export default function SrecanjePage() {
       return;
     }
 
-    setPin("");
     setUrejanje(false);
+    setPin("");
     setSporocilo("Spremembe so bile shranjene.");
     await loadData();
+  }
+
+  async function izbrisiSrecanje() {
+    setSporocilo("");
+
+    const potrjeno = window.confirm(
+      "Ali res želiš izbrisati to srečanje? Tega dejanja ni mogoče razveljaviti."
+    );
+
+    if (!potrjeno) {
+      return;
+    }
+
+    setBrisem(true);
+
+    const response = await fetch(`/api/srecanja/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    const result = await response.json();
+    setBrisem(false);
+
+    if (!response.ok) {
+      setSporocilo(result.error ?? "Napaka pri brisanju.");
+      return;
+    }
+
+    router.push("/srecanja");
+    router.refresh();
   }
 
   if (nalaganje) {
@@ -222,6 +283,7 @@ export default function SrecanjePage() {
                   <p className="text-sm text-slate-500">
                     {formatDatum(srecanje.datum)}
                   </p>
+
                   <h1 className="mt-1 text-3xl font-bold leading-tight text-slate-900">
                     {srecanje.tema}
                   </h1>
@@ -286,8 +348,9 @@ export default function SrecanjePage() {
               <h2 className="font-semibold text-slate-900">
                 Uredi srečanje
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
-                Za urejanje vnesi PIN vodnika.
+                Urejanje se odpre šele po pravilnem PIN-u vodnika.
               </p>
 
               <input
@@ -296,6 +359,12 @@ export default function SrecanjePage() {
                 autoComplete="off"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    preveriPinInOdpriUrejanje();
+                  }
+                }}
                 placeholder="PIN"
                 className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-4 text-lg tracking-widest outline-none focus:border-emerald-600"
               />
@@ -314,18 +383,11 @@ export default function SrecanjePage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  if (!pin.trim()) {
-                    setSporocilo("Za urejanje vnesi PIN vodnika.");
-                    return;
-                  }
-
-                  setSporocilo("");
-                  setUrejanje(true);
-                }}
-                className="mt-4 w-full rounded-xl bg-emerald-700 px-4 py-4 font-semibold text-white"
+                onClick={preveriPinInOdpriUrejanje}
+                disabled={preverjamPin}
+                className="mt-4 w-full rounded-xl bg-emerald-700 px-4 py-4 font-semibold text-white disabled:opacity-50"
               >
-                Uredi srečanje
+                {preverjamPin ? "Preverjam PIN ..." : "Odkleni urejanje"}
               </button>
             </section>
           </>
@@ -335,7 +397,10 @@ export default function SrecanjePage() {
             className="mt-5 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
           >
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <p className="text-sm font-semibold text-emerald-700">
+                Urejanje odklenjeno
+              </p>
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">
                 Uredi srečanje
               </h1>
               <p className="mt-1 text-sm text-slate-500">
@@ -425,52 +490,46 @@ export default function SrecanjePage() {
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                PIN vodnika
-              </label>
-              <input
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-4 py-4 text-lg tracking-widest"
-                required
-              />
-            </div>
-
             {sporocilo && (
               <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
                 {sporocilo}
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="submit"
-                disabled={shranjujem}
-                className="rounded-xl bg-emerald-700 px-4 py-4 font-semibold text-white disabled:opacity-50"
-              >
-                {shranjujem ? "Shranjujem ..." : "Shrani spremembe"}
-              </button>
+            <button
+              type="submit"
+              disabled={shranjujem}
+              className="w-full rounded-xl bg-emerald-700 px-4 py-4 font-semibold text-white disabled:opacity-50"
+            >
+              {shranjujem ? "Shranjujem ..." : "Shrani spremembe"}
+            </button>
 
+            <button
+              type="button"
+              onClick={() => {
+                setUrejanje(false);
+                setSporocilo("");
+                setPin("");
+                setDatum(srecanje.datum);
+                setVrsta(srecanje.vrsta);
+                setTema(srecanje.tema);
+                setPrisotni(String(srecanje.prisotni));
+                setOpis(srecanje.opis);
+                setOpombe(srecanje.opombe ?? "");
+              }}
+              className="w-full rounded-xl bg-slate-100 px-4 py-4 font-semibold text-slate-700"
+            >
+              Prekliči
+            </button>
+
+            <div className="border-t border-slate-200 pt-5">
               <button
                 type="button"
-                onClick={() => {
-                  setUrejanje(false);
-                  setSporocilo("");
-                  setPin("");
-                  setDatum(srecanje.datum);
-                  setVrsta(srecanje.vrsta);
-                  setTema(srecanje.tema);
-                  setPrisotni(String(srecanje.prisotni));
-                  setOpis(srecanje.opis);
-                  setOpombe(srecanje.opombe ?? "");
-                }}
-                className="rounded-xl bg-slate-100 px-4 py-4 font-semibold text-slate-700"
+                onClick={izbrisiSrecanje}
+                disabled={brisem}
+                className="w-full rounded-xl bg-red-50 px-4 py-4 font-semibold text-red-700 disabled:opacity-50"
               >
-                Prekliči
+                {brisem ? "Brišem ..." : "Izbriši srečanje"}
               </button>
             </div>
           </form>
