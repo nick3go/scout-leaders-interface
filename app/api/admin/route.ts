@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import {
+  ADMIN_COOKIE_NAME,
+  preveriAdminSessionToken,
+} from "@/lib/admin-auth";
 
 type AdminBody = {
   entity?: "vod" | "vodnik";
@@ -15,6 +20,16 @@ function cleanName(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
+
+  if (!preveriAdminSessionToken(token)) {
+    return NextResponse.json(
+      { error: "Za administracijo se moraš prijaviti." },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = (await request.json()) as AdminBody;
     const { entity, action } = body;
