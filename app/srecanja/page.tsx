@@ -182,6 +182,13 @@ export default function SrecanjaPage() {
               ? "vpisano srečanje"
               : "vpisanih srečanj"}
           </p>
+
+          <a
+            href="/api/export"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm sm:w-auto"
+          >
+            Izvozi za Google Sheets
+          </a>
         </div>
 
         <div className="mb-4">
