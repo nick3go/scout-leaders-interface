@@ -18,7 +18,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Link
             href="/vpis"
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -54,6 +54,25 @@ export default function Home() {
 
             <p className="mt-6 font-medium text-emerald-700">
               Poglej srečanja →
+            </p>
+          </Link>
+
+          <Link
+            href="/administracija"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="mb-8 text-3xl">⚙</div>
+
+            <h2 className="text-xl font-semibold text-slate-900">
+              Administracija
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600">
+              Upravljaj vode in vodnike.
+            </p>
+
+            <p className="mt-6 font-medium text-emerald-700">
+              Odpri nastavitve →
             </p>
           </Link>
         </div>
