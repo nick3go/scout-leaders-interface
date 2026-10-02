@@ -6,6 +6,7 @@ const dovoljeneVrste = [
   "Zabavno",
   "Ustvarjalno",
   "Povezovalno",
+  "Drugo",
 ];
 
 export async function POST(request: Request) {
