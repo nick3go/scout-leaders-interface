@@ -30,14 +30,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const body = await request.json();
-    const { vodnik_id, vrsta, tema, opis, opombe } = body;
+    const { vrsta, tema, opis, opombe } = body;
 
-    if (
-      !vodnik_id ||
-      !vrsta ||
-      !tema?.trim() ||
-      !opis?.trim()
-    ) {
+    if (!vrsta || !tema?.trim() || !opis?.trim()) {
       return NextResponse.json(
         { error: "Izpolni vsa obvezna polja." },
         { status: 400 }
@@ -51,24 +46,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    const { data: vodnik, error: vodnikError } =
-      await supabaseAdmin
-        .from("vodnik")
-        .select("id")
-        .eq("id", Number(vodnik_id))
-        .maybeSingle();
-
-    if (vodnikError || !vodnik) {
-      return NextResponse.json(
-        { error: "Izbrani vodnik ne obstaja." },
-        { status: 400 }
-      );
-    }
-
     const { data, error } = await supabaseAdmin
       .from("ideja")
       .update({
-        vodnik_id: Number(vodnik_id),
         vrsta,
         tema: tema.trim(),
         opis: opis.trim(),
