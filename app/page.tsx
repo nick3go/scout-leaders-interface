@@ -77,6 +77,25 @@ export default function Home() {
           </Link>
 
           <Link
+            href="/pomoc"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="mb-8 text-3xl">↔</div>
+
+            <h2 className="text-xl font-semibold text-slate-900">
+              Pomoč med vodniki
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600">
+              Poišči pomoč pri temi ali ponudi svoje znanje drugim vodnikom.
+            </p>
+
+            <p className="mt-6 font-medium text-emerald-700">
+              Poglej oglase →
+            </p>
+          </Link>
+
+          <Link
             href="/administracija"
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
