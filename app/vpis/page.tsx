@@ -225,6 +225,7 @@ if (!response.ok) {
                 <option value="Zabavno">Zabavno</option>
                 <option value="Ustvarjalno">Ustvarjalno</option>
                 <option value="Povezovalno">Povezovalno</option>
+                <option value="Drugo">Drugo</option>
               </select>
             </div>
           </div>

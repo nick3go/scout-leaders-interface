@@ -24,22 +24,16 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Neveljaven ID srečanja." },
+      { error: "Neveljaven ID ideje." },
       { status: 400 }
     );
   }
 
   try {
     const body = await request.json();
-    const { datum, vrsta, tema, prisotni, opis, opombe } = body;
+    const { vrsta, tema, opis, opombe } = body;
 
-    if (
-      !datum ||
-      !vrsta ||
-      !tema?.trim() ||
-      prisotni === undefined ||
-      !opis?.trim()
-    ) {
+    if (!vrsta || !tema?.trim() || !opis?.trim()) {
       return NextResponse.json(
         { error: "Izpolni vsa obvezna polja." },
         { status: 400 }
@@ -53,25 +47,11 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    const steviloPrisotnih = Number(prisotni);
-
-    if (
-      !Number.isInteger(steviloPrisotnih) ||
-      steviloPrisotnih < 0
-    ) {
-      return NextResponse.json(
-        { error: "Neveljavno število prisotnih." },
-        { status: 400 }
-      );
-    }
-
     const { data, error } = await supabaseAdmin
-      .from("srecanje")
+      .from("ideja")
       .update({
-        datum,
         vrsta,
         tema: tema.trim(),
-        prisotni: steviloPrisotnih,
         opis: opis.trim(),
         opombe: opombe?.trim() || null,
       })
@@ -81,16 +61,15 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (error) {
       console.error(error);
-
       return NextResponse.json(
-        { error: "Napaka pri shranjevanju sprememb." },
+        { error: "Sprememb ni bilo mogoče shraniti." },
         { status: 500 }
       );
     }
 
     if (!data) {
       return NextResponse.json(
-        { error: "Srečanje ne obstaja." },
+        { error: "Ideja ne obstaja." },
         { status: 404 }
       );
     }
@@ -113,13 +92,13 @@ export async function DELETE(
 
   if (!id) {
     return NextResponse.json(
-      { error: "Neveljaven ID srečanja." },
+      { error: "Neveljaven ID ideje." },
       { status: 400 }
     );
   }
 
   const { data, error } = await supabaseAdmin
-    .from("srecanje")
+    .from("ideja")
     .delete()
     .eq("id", id)
     .select("id")
@@ -127,16 +106,15 @@ export async function DELETE(
 
   if (error) {
     console.error(error);
-
     return NextResponse.json(
-      { error: "Napaka pri brisanju srečanja." },
+      { error: "Ideje ni bilo mogoče izbrisati." },
       { status: 500 }
     );
   }
 
   if (!data) {
     return NextResponse.json(
-      { error: "Srečanje ne obstaja." },
+      { error: "Ideja ne obstaja." },
       { status: 404 }
     );
   }

@@ -306,6 +306,9 @@ export default function SrecanjaPage() {
                   <option value="Povezovalno">
                     Povezovalno
                   </option>
+                  <option value="Drugo">
+                    Drugo
+                  </option>
                 </select>
               </div>
 
