@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase";
 
 type Ideja = {
   id: number;
-  vodnik_id: number;
   vrsta: string;
   tema: string;
   opis: string;
@@ -14,22 +13,14 @@ type Ideja = {
   created_at: string;
 };
 
-type Vodnik = {
-  id: number;
-  name: string;
-  active: boolean;
-};
-
 const vrste = ["Znanje", "Zabavno", "Ustvarjalno", "Povezovalno"];
 
 export default function IdejePage() {
   const [ideje, setIdeje] = useState<Ideja[]>([]);
-  const [vodniki, setVodniki] = useState<Vodnik[]>([]);
   const [nalaganje, setNalaganje] = useState(true);
   const [napaka, setNapaka] = useState("");
   const [sporocilo, setSporocilo] = useState("");
 
-  const [vodnikId, setVodnikId] = useState<number | null>(null);
   const [vrsta, setVrsta] = useState("Znanje");
   const [tema, setTema] = useState("");
   const [opis, setOpis] = useState("");
@@ -40,7 +31,6 @@ export default function IdejePage() {
   const [vrstaFilter, setVrstaFilter] = useState("");
 
   const [urejanjeId, setUrejanjeId] = useState<number | null>(null);
-  const [editVodnikId, setEditVodnikId] = useState<number | null>(null);
   const [editVrsta, setEditVrsta] = useState("Znanje");
   const [editTema, setEditTema] = useState("");
   const [editOpis, setEditOpis] = useState("");
@@ -52,22 +42,11 @@ export default function IdejePage() {
     setNalaganje(true);
     setNapaka("");
 
-    const [
-      { data: idejeData, error: idejeError },
-      { data: vodnikiData, error: vodnikiError },
-    ] = await Promise.all([
-      supabase
-        .from("ideja")
-        .select("id, vodnik_id, vrsta, tema, opis, opombe, created_at")
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false }),
-      supabase
-        .from("vodnik")
-        .select("id, name, active")
-        .order("name"),
-    ]);
-
-    const error = idejeError || vodnikiError;
+    const { data, error } = await supabase
+      .from("ideja")
+      .select("id, vrsta, tema, opis, opombe, created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
 
     if (error) {
       console.error(error);
@@ -76,33 +55,13 @@ export default function IdejePage() {
       return;
     }
 
-    setIdeje(idejeData ?? []);
-    setVodniki(vodnikiData ?? []);
-
-    setVodnikId((trenutni) => {
-      if (
-        trenutni &&
-        vodnikiData?.some(
-          (vodnik) => vodnik.id === trenutni && vodnik.active
-        )
-      ) {
-        return trenutni;
-      }
-
-      return vodnikiData?.find((vodnik) => vodnik.active)?.id ?? null;
-    });
-
+    setIdeje(data ?? []);
     setNalaganje(false);
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const aktivniVodniki = useMemo(
-    () => vodniki.filter((vodnik) => vodnik.active),
-    [vodniki]
-  );
 
   const filtriraneIdeje = useMemo(() => {
     const query = iskanje.trim().toLowerCase();
@@ -124,9 +83,6 @@ export default function IdejePage() {
     });
   }, [ideje, iskanje, vrstaFilter]);
 
-  const vodnikIme = (id: number) =>
-    vodniki.find((vodnik) => vodnik.id === id)?.name ?? "Neznan vodnik";
-
   function resetForm() {
     setVrsta("Znanje");
     setTema("");
@@ -139,7 +95,7 @@ export default function IdejePage() {
     setNapaka("");
     setSporocilo("");
 
-    if (!vodnikId || !tema.trim() || !opis.trim()) {
+    if (!tema.trim() || !opis.trim()) {
       setNapaka("Izpolni vsa obvezna polja.");
       return;
     }
@@ -149,13 +105,7 @@ export default function IdejePage() {
     const response = await fetch("/api/ideje", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        vodnik_id: vodnikId,
-        vrsta,
-        tema,
-        opis,
-        opombe,
-      }),
+      body: JSON.stringify({ vrsta, tema, opis, opombe }),
     });
 
     const result = await response.json();
@@ -173,7 +123,6 @@ export default function IdejePage() {
 
   function zacniUrejanje(ideja: Ideja) {
     setUrejanjeId(ideja.id);
-    setEditVodnikId(ideja.vodnik_id);
     setEditVrsta(ideja.vrsta);
     setEditTema(ideja.tema);
     setEditOpis(ideja.opis);
@@ -183,7 +132,7 @@ export default function IdejePage() {
   }
 
   async function shraniUrejanje(id: number) {
-    if (!editVodnikId || !editTema.trim() || !editOpis.trim()) {
+    if (!editTema.trim() || !editOpis.trim()) {
       setNapaka("Izpolni vsa obvezna polja.");
       return;
     }
@@ -196,7 +145,6 @@ export default function IdejePage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vodnik_id: editVodnikId,
         vrsta: editVrsta,
         tema: editTema,
         opis: editOpis,
@@ -218,11 +166,11 @@ export default function IdejePage() {
   }
 
   async function izbrisiIdejo(id: number) {
-    const potrjeno = window.confirm(
-      "Ali res želiš izbrisati to idejo? Tega dejanja ni mogoče razveljaviti."
-    );
-
-    if (!potrjeno) {
+    if (
+      !window.confirm(
+        "Ali res želiš izbrisati to idejo? Tega dejanja ni mogoče razveljaviti."
+      )
+    ) {
       return;
     }
 
@@ -240,10 +188,6 @@ export default function IdejePage() {
     if (!response.ok) {
       setNapaka(result.error ?? "Ideje ni bilo mogoče izbrisati.");
       return;
-    }
-
-    if (urejanjeId === id) {
-      setUrejanjeId(null);
     }
 
     setSporocilo("Ideja je bila izbrisana.");
@@ -265,7 +209,7 @@ export default function IdejePage() {
             Ideje za srečanja
           </h1>
           <p className="mt-2 text-slate-600">
-            Dodaj idejo ali preglej in uredi ideje drugih vodnikov.
+            Vsi vodniki lahko dodajajo, pregledujejo in urejajo ideje.
           </p>
         </div>
 
@@ -287,49 +231,23 @@ export default function IdejePage() {
               <h2 className="text-xl font-bold text-slate-900">
                 Dodaj novo idejo
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Vpiši osnovne podatke o ideji za prihodnje srečanje.
-              </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Vodnik
-                </label>
-                <select
-                  value={vodnikId ?? ""}
-                  onChange={(e) => setVodnikId(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
-                  required
-                >
-                  {aktivniVodniki.length === 0 && (
-                    <option value="">Ni aktivnih vodnikov</option>
-                  )}
-                  {aktivniVodniki.map((vodnik) => (
-                    <option key={vodnik.id} value={vodnik.id}>
-                      {vodnik.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Vrsta srečanja
-                </label>
-                <select
-                  value={vrsta}
-                  onChange={(e) => setVrsta(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
-                >
-                  {vrste.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Vrsta srečanja
+              </label>
+              <select
+                value={vrsta}
+                onChange={(e) => setVrsta(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
+              >
+                {vrste.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -348,13 +266,13 @@ export default function IdejePage() {
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Opis ideje
+                Opis
               </label>
               <textarea
                 rows={5}
                 value={opis}
                 onChange={(e) => setOpis(e.target.value)}
-                placeholder="Opiši, kako bi srečanje potekalo ..."
+                placeholder="Opiši idejo za srečanje ..."
                 className="w-full rounded-xl border border-slate-300 px-3 py-3"
                 required
               />
@@ -377,7 +295,7 @@ export default function IdejePage() {
 
             <button
               type="submit"
-              disabled={shranjujem || aktivniVodniki.length === 0}
+              disabled={shranjujem}
               className="w-full rounded-xl bg-emerald-700 px-4 py-4 font-semibold text-white disabled:opacity-50"
             >
               {shranjujem ? "Shranjujem ..." : "+ Dodaj idejo"}
@@ -434,34 +352,17 @@ export default function IdejePage() {
                   >
                     {urejanjeId === ideja.id ? (
                       <div className="space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <select
-                            value={editVodnikId ?? ""}
-                            onChange={(e) =>
-                              setEditVodnikId(Number(e.target.value))
-                            }
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-3"
-                          >
-                            {vodniki.map((vodnik) => (
-                              <option key={vodnik.id} value={vodnik.id}>
-                                {vodnik.name}
-                                {vodnik.active ? "" : " (neaktiven)"}
-                              </option>
-                            ))}
-                          </select>
-
-                          <select
-                            value={editVrsta}
-                            onChange={(e) => setEditVrsta(e.target.value)}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-3"
-                          >
-                            {vrste.map((item) => (
-                              <option key={item} value={item}>
-                                {item}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <select
+                          value={editVrsta}
+                          onChange={(e) => setEditVrsta(e.target.value)}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
+                        >
+                          {vrste.map((item) => (
+                            <option key={item} value={item}>
+                              {item}
+                            </option>
+                          ))}
+                        </select>
 
                         <input
                           type="text"
@@ -507,14 +408,9 @@ export default function IdejePage() {
                     ) : (
                       <>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-slate-900">
-                              {ideja.tema}
-                            </h3>
-                            <p className="mt-1 text-sm text-slate-500">
-                              Dodal/a: {vodnikIme(ideja.vodnik_id)}
-                            </p>
-                          </div>
+                          <h3 className="text-lg font-bold text-slate-900">
+                            {ideja.tema}
+                          </h3>
 
                           <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                             {ideja.vrsta}
