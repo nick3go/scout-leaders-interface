@@ -6,6 +6,7 @@ const dovoljeneVrste = [
   "Zabavno",
   "Ustvarjalno",
   "Povezovalno",
+  "Drugo",
 ];
 
 type RouteContext = {
