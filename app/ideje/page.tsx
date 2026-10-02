@@ -13,7 +13,7 @@ type Ideja = {
   created_at: string;
 };
 
-const vrste = ["Znanje", "Zabavno", "Ustvarjalno", "Povezovalno"];
+const vrste = ["Znanje", "Zabavno", "Ustvarjalno", "Povezovalno", "Drugo"];
 
 export default function IdejePage() {
   const [ideje, setIdeje] = useState<Ideja[]>([]);
